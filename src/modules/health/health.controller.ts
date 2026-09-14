@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 
-import { HealthService } from "../services/health.service";
+import { HealthService } from "./health.service";
 
 export class HealthController {
 

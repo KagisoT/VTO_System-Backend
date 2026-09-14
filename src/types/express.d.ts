@@ -10,9 +10,11 @@ declare global {
 
             email: string;
 
-            role: string;
+            role_id: number;
 
             permissions: string[];
+
+            employeeId: string;
 
         }
 

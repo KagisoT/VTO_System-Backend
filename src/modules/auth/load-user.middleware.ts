@@ -1,25 +1,64 @@
-import { Request, Response, NextFunction } from "express";
-import { UserService } from "./user.service";
+import {
+    Request,
+    Response,
+    NextFunction
+} from "express";
+
+import { AuthService } from "./auth.service";
 import { AppError } from "../../shared/errors";
+import { devLogger } from "../../utils/dev-logger";
 
 export function createLoadUserMiddleware(
-    userService: UserService
+    authService: AuthService
 ) {
+
     return async (
+
         req: Request,
         res: Response,
         next: NextFunction
+
     ) => {
+
         try {
+
             if (!req.auth) {
-                throw new AppError(401, "Unauthenticated.");
+
+                throw new AppError(
+                    401,
+                    "Unauthenticated."
+                );
+
             }
 
-            req.user = await userService.loadCurrentUser(req.auth.id);
+            devLogger.debug("loadUser middleware: start", {
+                authId: req.auth.id,
+                authEmail: req.auth.email,
+                url: req.originalUrl
+            });
+
+            req.user =
+                await authService.me(req.auth.id);
+
+            devLogger.debug("loadUser middleware: completed", {
+                authId: req.auth.id,
+                userId: req.user?.id,
+                roleId: req.user?.roleId,
+                permissionsCount: req.user?.permissions.length ?? 0
+            });
 
             next();
-        } catch (error) {
-            next(error);
+
         }
+
+        catch (error) {
+
+            devLogger.error("loadUser middleware error", error);
+
+            next(error);
+
+        }
+
     };
+
 }

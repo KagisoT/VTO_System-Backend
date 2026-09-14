@@ -1,25 +1,23 @@
-import { DatabaseRepository } from "../../repositories/database.repository";
-import { Tables } from "../../../src/shared/tables";
+import { HealthRepository } from "../../repositories";
 
 export class HealthService {
 
     constructor(
-        private readonly repository: DatabaseRepository
+        private readonly repository: HealthRepository
     ) {}
 
     async checkHealth() {
 
         const connected =
-            await this.repository.exists(
-                Tables.USERS
-            
-            );
+            await this.repository.ping();
 
         return {
 
-            status: "OK",
+            status: connected ? "OK" : "ERROR",
 
-            database: "Connected",
+            database: connected
+                ? "Connected"
+                : "Disconnected",
 
             connected
 

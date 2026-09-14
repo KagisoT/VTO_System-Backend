@@ -1,18 +1,3 @@
-/*import {
-
-    PermissionRepository,
-    AuthRepository,
-    HealthRepository,
-    EmployeeRepository,
-    ClientRepository,
-    DebtRepository,
-    PaymentRepository,
-    AuditRepository,
-    NotificationRepository
-} from "./repositories";
-
-*/
-
 import { UserRepository } from "./repositories/user.repository";
 import { PermissionRepository } from "./repositories/permission.repository";
 import { AuthRepository } from "./repositories/auth.repository";
@@ -23,14 +8,20 @@ import { DebtRepository } from "./repositories/debt.repository";
 import { PaymentRepository } from "./repositories/payment.repository";
 import { AuditRepository } from "./repositories/audit.repository";
 import { NotificationRepository } from "./repositories/notification.repository";
+import { ImportRepository } from "./repositories/import.repository";
 
-
+import { DebtController } from "./modules/debts/debt.contoller";
+import { DebtService } from "./modules/debts/debt.service";
+import { EmployeeController } from "./modules/employee/employee.controller";
+import { ImportService } from "./modules/import/import.service";
+import { ImportController } from "./modules/import/import.controller";
 
 import {
     AuthController,
     AuthService,
     UserService,
-    PermissionService
+    PermissionService,
+    createLoadUserMiddleware
 } from "./modules/auth";
 
 import {
@@ -38,48 +29,86 @@ import {
     HealthService
 } from "./modules/health";
 
-/*
-|--------------------------------------------------------------------------
-| Repositories
-|--------------------------------------------------------------------------
-*/
+import { EmployeeService } from "./modules/employee/employee.service";
 
-const userRepository = new UserRepository();
-
-const permissionRepository = new PermissionRepository();
-
-const authRepository = new AuthRepository();
-
-const healthRepository = new HealthRepository();
-
-const employeeRepository = new EmployeeRepository();
-
-const clientRepository = new ClientRepository();
-
-const debtRepository = new DebtRepository();
-
-const paymentRepository = new PaymentRepository();
-
-const auditRepository = new AuditRepository();
-
-const notificationRepository = new NotificationRepository();
 
 /*
-|--------------------------------------------------------------------------
-| Services
-|--------------------------------------------------------------------------
-*/
+ * --------------------------------------------------------------------------
+ * Repositories
+ * --------------------------------------------------------------------------
+ */
 
-const userService =
-    new UserService(userRepository);
+
+
+const userRepository =
+    new UserRepository();
+
+const permissionRepository =
+    new PermissionRepository();
+
+const authRepository =
+    new AuthRepository();
+
+const healthRepository =
+    new HealthRepository();
+
+const employeeRepository =
+    new EmployeeRepository();
+
+const clientRepository =
+    new ClientRepository();
+
+const debtRepository =
+    new DebtRepository();
+
+const paymentRepository =
+    new PaymentRepository();
+
+const auditRepository =
+    new AuditRepository();
+
+const notificationRepository =
+    new NotificationRepository();
+
+    
+const importRepository =
+    new ImportRepository();
+
+
+/*
+ * --------------------------------------------------------------------------
+ * Services
+ * --------------------------------------------------------------------------
+ */
 
 const permissionService =
-    new PermissionService(permissionRepository);
+    new PermissionService(
+        permissionRepository
+    );
+
+const userService =
+    new UserService(
+        userRepository,
+        permissionService
+    );
+
+const employeeService =
+    new EmployeeService(
+        employeeRepository
+
+    );
+
+const debtService =
+    new DebtService(
+        debtRepository,
+        clientRepository
+    );
 
 const authService =
     new AuthService(
         userService,
-        permissionService
+        permissionService,
+        employeeService
     );
 
 const healthService =
@@ -87,70 +116,149 @@ const healthService =
         healthRepository
     );
 
+export const importService =
+    new ImportService(
+        importRepository
+    );
+
+
+
 /*
-|--------------------------------------------------------------------------
-| Controllers
-|--------------------------------------------------------------------------
-*/
+ * --------------------------------------------------------------------------
+ * Middleware
+ * --------------------------------------------------------------------------
+ */
+
+export const loadUser =
+    createLoadUserMiddleware(
+        authService
+    );
+
+
+/*
+ * --------------------------------------------------------------------------
+ * Controllers
+ * --------------------------------------------------------------------------
+ */
+
+const debtController =
+    new DebtController(
+        debtService
+    );
 
 const authController =
-    new AuthController(authService);
+    new AuthController(
+        authService
+    );
 
 const healthController =
-    new HealthController(healthService);
+    new HealthController(
+        healthService
+    );
+
+const employeeController =
+    new EmployeeController(
+        employeeService);
+
+export const importController =
+    new ImportController(
+        importService
+    );
 
 /*
-|--------------------------------------------------------------------------
-| Container
-|--------------------------------------------------------------------------
-*/
+ * --------------------------------------------------------------------------
+ * Container
+ * --------------------------------------------------------------------------
+ */
 
-export const container = Object.freeze({
 
-    repositories: {
+export const container =
+    Object.freeze({
 
-        auth: authRepository,
+        repositories: {
 
-        user: userRepository,
+            auth:
+                authRepository,
 
-        permission: permissionRepository,
+            user:
+                userRepository,
 
-        health: healthRepository,
+            permission:
+                permissionRepository,
 
-        employee: employeeRepository,
+            health:
+                healthRepository,
 
-        client: clientRepository,
+            employee:
+                employeeRepository,
 
-        debt: debtRepository,
+            client:
+                clientRepository,
 
-        payment: paymentRepository,
+            debt:
+                debtRepository,
 
-        audit: auditRepository,
+            payment:
+                paymentRepository,
 
-        notification: notificationRepository
+            audit:
+                auditRepository,
 
-    },
+            notification:
+                notificationRepository,
 
-    services: {
+            import:
+                importRepository
 
-        auth: authService,
+        },
 
-        user: userService,
+        services: {
 
-        permission: permissionService,
+            debt:
+                debtService,
 
-        health: healthService
+            auth:
+                authService,
 
-    },
+            user:
+                userService,
 
-    controllers: {
+            permission:
+                permissionService,
 
-        auth: authController,
+            health:
+                healthService,
 
-        health: healthController
+            employee:
+                employeeService,
 
-    }
+            import:
+                importService
 
-});
+        },
 
-export type AppContainer = typeof container;
+        controllers: {
+
+            debt:
+                debtController,
+
+            auth:
+                authController,
+
+            health:
+                healthController,
+
+            employee:
+                employeeController,
+
+            import:
+                importController
+
+        }
+
+    });
+
+
+
+export type AppContainer =
+    typeof container;

@@ -1,39 +1,39 @@
-import {
+import { Request, Response, NextFunction } from "express";
 
-    Request,
-
-    Response,
-
-    NextFunction
-
-} from "express";
-
-import { logger } from "../config/logger";
+import { AppError } from "../shared/errors";
+import { errorResponse } from "../shared/responses";
 
 export function errorHandler(
 
-    err: any,
-
+    error: Error,
     req: Request,
-
     res: Response,
-
     next: NextFunction
 
 ) {
 
-    logger.error(err.message);
+    if (error instanceof AppError) {
 
-    res.status(err.status || 500).json({
+        return res.status(error.status).json(
 
-        success: false,
+            errorResponse(
+                error.message,
+                error.message
+            )
 
-        message:
+        );
 
-            err.message ||
+    }
 
-            "Internal Server Error"
+    console.error(error);
 
-    });
+    return res.status(500).json(
+
+        errorResponse(
+            "Internal Server Error",
+            error.message
+        )
+
+    );
 
 }

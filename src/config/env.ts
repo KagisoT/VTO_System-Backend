@@ -10,7 +10,7 @@ const schema = z.object({
         "test"
     ]).default("development"),
 
-    PORT: z.coerce.number().default(3000),
+    PORT: z.coerce.number().default(3002),
 
     DATABASE_URL: z.string().min(1),
 
@@ -19,6 +19,10 @@ const schema = z.object({
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 
     JWT_SECRET: z.string().min(32),
+
+    REDIS_URL: z.string().url(),
+
+    APP_TIMEZONE: z.string().default("Africa/Johannesburg")
 });
 
 const result = schema.safeParse(process.env);

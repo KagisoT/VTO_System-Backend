@@ -70,14 +70,36 @@ export const refreshTokenSchema = z.object({
 
 export const registerSchema = z.object({
 
-    email: z
-        .string()
-        .email(),
+    body: z.object({
 
-    password: z
-        .string()
-        .min(8)
-        .max(100)
+        email: z
+            .string()
+            .email("Invalid email address.")
+            .trim()
+            .toLowerCase(),
+
+        password: z
+            .string()
+            .min(8, "Password must be at least 8 characters.")
+            .max(100),
+
+        name: z
+            .string() 
+            .max(25),
+
+        surname: z
+            .string()
+            .max(25),
+
+        roleId: z.coerce.number()
+            .int()
+            .min(1, "roleId must be at least 1")
+            .positive()
+            .optional()
+
+    })
 
 });
 
+export type RegisterDto =
+    z.infer<typeof registerSchema>["body"];

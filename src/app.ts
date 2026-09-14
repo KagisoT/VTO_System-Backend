@@ -1,24 +1,41 @@
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
-import morgan from "morgan";
+import compression from "compression";
 
 import routes from "./routes";
+
 import { requestLogger } from "./middleware/logger";
 import { notFound } from "./middleware/notFound";
 import { errorHandler } from "./middleware/error";
 
 const app = express();
 
-app.disable("x-powered-by");
+// Security
 app.use(helmet());
+
+// Cross-origin requests
 app.use(cors());
+
+// Compress responses
+app.use(compression());
+
+// Parse JSON bodies
 app.use(express.json());
+
+// Parse URL encoded bodies
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan("dev"));
+
+// Request logging
 app.use(requestLogger);
-app.use("/api/v1", routes);
+
+// API Routes
+app.use("/api", routes);
+
+// 404 Handler
 app.use(notFound);
+
+// Global Error Handler
 app.use(errorHandler);
 
 export default app;

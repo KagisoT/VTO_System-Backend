@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { env } from "./env";
+import { devLogger } from "../utils/dev-logger";
 
 
 export const database = new Pool({
@@ -10,10 +11,10 @@ export const database = new Pool({
 });
 
 database.on("connect", () => {
-    console.log("✅ PostgreSQL Connected");
+    devLogger.debug("database: connected to PostgreSQL");
 });
 
 database.on("error", (error) => {
-    console.error("❌ PostgreSQL Error:", error);
+    devLogger.error("database: PostgreSQL error", error);
     process.exit(1);
 });
