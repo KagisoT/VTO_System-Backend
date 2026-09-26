@@ -1,7 +1,9 @@
 import logging
+from time import monotonic
 import requests
 
-from config import API_URL, REQUEST_TIMEOUT
+from cache import TTLCache
+from config import API_URL, REQUEST_TIMEOUT, CACHE_TTL_SECONDS, CACHE_MAX_ENTRIES
 from session import Session
 
 from errors import (
@@ -16,13 +18,20 @@ from errors import (
 )
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("vto_collector.api")
 
 
 class ApiService:
 
     def __init__(self):
         self.base_url = API_URL.rstrip("/")
+        self._cache = TTLCache(CACHE_TTL_SECONDS, CACHE_MAX_ENTRIES)
+        Session.register_cache(self._cache)
+        self._session_generation = Session.generation
+        self._session_token = Session.token
+
+    def clear_cache(self):
+        self._cache.clear()
 
     def headers(self):
         headers = {
@@ -36,13 +45,22 @@ class ApiService:
 
     def _request(self, method, endpoint, data=None):
 
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        method = method.upper()
+        if (self._session_generation != Session.generation
+                or self._session_token != Session.token):
+            self.clear_cache()
+            self._session_generation = Session.generation
+            self._session_token = Session.token
 
-        logger.debug(
-            "%s %s",
-            method.upper(),
-            url
-        )
+        cache_key = endpoint if method == "GET" and data is None else None
+        if cache_key is not None:
+            found, cached = self._cache.get(cache_key)
+            if found:
+                logger.debug("Cache hit for GET request")
+                return cached
+
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        started = monotonic()
 
         try:
 
@@ -55,32 +73,36 @@ class ApiService:
             )
 
         except requests.exceptions.Timeout:
+            logger.warning("API %s timed out", method)
 
             raise RequestTimeoutError()
 
         except requests.exceptions.ConnectionError:
+            logger.warning("API %s connection failed", method)
 
             raise NetworkError(
                 "Unable to connect to the VTO server."
             )
 
         except requests.exceptions.RequestException:
+            logger.warning("API %s request failed", method)
 
             raise NetworkError(
                 "A network error occurred."
             )
 
-        logger.debug(
-            "%s %s -> %s",
-            method.upper(),
-            url,
-            response.status_code
-        )
+        logger.info("API %s returned %s in %.0f ms", method,
+                    response.status_code, (monotonic() - started) * 1000)
 
-        return self._handle_response(
+        result = self._handle_response(
             response,
             endpoint
         )
+        if cache_key is not None:
+            self._cache.set(cache_key, result)
+        elif method not in ("GET", "HEAD"):
+            self.clear_cache()
+        return result
 
     def _handle_response(self, response, endpoint):
 
@@ -155,11 +177,7 @@ class ApiService:
 
         if status >= 500:
 
-            logger.error(
-                "Server error %s: %s",
-                status,
-                response.text
-            )
+            logger.error("Server error %s", status)
 
             raise ServerError(
                 "The server encountered an error. "
@@ -223,7 +241,7 @@ class ApiService:
 
         return self._request(
             "GET",
-            "/debt"
+            "/debt/assigned"
         )
 
     def get_account(self, account_id):
@@ -232,6 +250,21 @@ class ApiService:
             "GET",
             f"/debt/{account_id}"
         )
+
+    def update_account_status(self, debt_id, status):
+        return self._request("PATCH", f"/debt/{debt_id}/status", {"status": status})
+
+    def update_account_notes(self, debt_id, notes):
+        return self._request("PATCH", f"/debt/{debt_id}/notes", {"notes": notes})
+
+    def get_arrangements_for_debt(self, debt_id):
+        return self._request("GET", f"/payments/arrangements/debt/{debt_id}")
+
+    def create_payment_arrangement(self, payload):
+        return self._request("POST", "/payments/arrangements", payload)
+
+    def get_payment_history(self, debt_id):
+        return self._request("GET", f"/payments/debt/{debt_id}")
 
     # ------------------------------------------------------
     # CALLS

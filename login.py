@@ -7,9 +7,7 @@ from api import api
 from session import Session
 from dashboard import Dashboard
 
-logger = logging.getLogger(__name__)
-if not logging.getLogger().handlers:
-    logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger("vto_collector.login")
 
 
 class LoginPage(ctk.CTkFrame):
@@ -109,12 +107,11 @@ class LoginPage(ctk.CTkFrame):
             response_obj = None
             if hasattr(data, "status_code"):
                 response_obj = data
-                logger.debug("Login response status=%s headers=%s", response_obj.status_code, response_obj.headers)
+                logger.debug("Login response status=%s", response_obj.status_code)
                 try:
                     data = response_obj.json()
                 except Exception:
                     data = {}
-                logger.debug("Login response body=%s", data)
 
             # Support multiple possible API shapes for token/user
             token = None
@@ -207,7 +204,6 @@ class LoginPage(ctk.CTkFrame):
 
             if not token and response_obj is not None:
                 headers = response_obj.headers or {}
-                logger.debug("Login response headers: %s", headers)
                 auth_header = (
                     headers.get("Authorization")
                     or headers.get("authorization")
@@ -224,7 +220,7 @@ class LoginPage(ctk.CTkFrame):
                         token = auth_header
 
             if token:
-                logger.debug("Login token extracted: %s", token)
+                logger.info("Login token received")
                 Session.login(token, user)
                 app = self._find_app()
                 if app:

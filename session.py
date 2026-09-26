@@ -1,6 +1,7 @@
 import logging
+from weakref import WeakSet
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("vto_collector.session")
 
 
 class Session:
@@ -9,6 +10,19 @@ class Session:
     token = None
 
     user = None
+
+    generation = 0
+
+    _caches = WeakSet()
+
+    @classmethod
+    def register_cache(cls, cache):
+        cls._caches.add(cache)
+
+    @classmethod
+    def _clear_caches(cls):
+        for cache in cls._caches:
+            cache.clear()
 
     @classmethod
     def _normalize_user(cls, user):
@@ -82,17 +96,25 @@ class Session:
     @classmethod
     def login(cls, token, user):
 
+        cls.generation += 1
+        cls._clear_caches()
         cls.token = cls._normalize_token(token)
         cls.user = cls._normalize_user(user)
-        logger.debug("Session token set: %s", cls.token)
-        logger.debug("Session user set: %s", cls.user)
+        logger.info("Session started")
 
     @classmethod
     def logout(cls):
 
+        cls.generation += 1
+        cls._clear_caches()
         cls.token = None
 
         cls.user = None
+        logger.info("Session ended")
+
+    @classmethod
+    def clear(cls):
+        cls.logout()
 
     @classmethod
     def is_logged_in(cls):

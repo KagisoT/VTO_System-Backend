@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 
 from api import api
 from workqueue import WorkQueue
@@ -10,7 +10,7 @@ from session import Session
 class Dashboard(ctk.CTkFrame):
 
     def __init__(self, master):
-        super().__init__(master)
+        super().__init__(master, fg_color="#0F172A")
         self.pack(fill="both", expand=True)
         self.accounts = self.fetch_accounts()
         self.build()
@@ -26,66 +26,98 @@ class Dashboard(ctk.CTkFrame):
             return []
 
     def build(self):
-        # Top header inside content area
-        header = ctk.CTkFrame(self, height=72)
-        header.pack(fill="x", padx=20, pady=12)
+        content = ctk.CTkScrollableFrame(self, fg_color="#0F172A")
+        content.pack(fill="both", expand=True, padx=16, pady=12)
 
-        ctk.CTkLabel(header, text="Account management", font=("Segoe UI", 20, "bold")).pack(side="left")
-
-        # username on the right
+        header = ctk.CTkFrame(content, fg_color="transparent")
+        header.pack(fill="x", pady=(0, 12))
+        ctk.CTkLabel(
+            header, text="Account management", text_color="#F9FAFB",
+            font=ctk.CTkFont(size=24, weight="bold")
+        ).pack(side="left")
         username = "Collector"
         if Session.user:
             username = Session.user.get("fullName") or Session.user.get("username", "Collector")
+        ctk.CTkLabel(header, text=username, text_color="#9CA3AF").pack(side="right")
 
-        ctk.CTkLabel(header, text=username, font=("Segoe UI", 14)).pack(side="right")
+        toolbar = ctk.CTkFrame(content, fg_color="transparent")
+        toolbar.pack(fill="x", pady=(0, 12))
+        search = ctk.CTkEntry(
+            toolbar, placeholder_text="Search accounts, clients, arrangements..."
+        )
+        search.pack(side="left", fill="x", expand=True, padx=(0, 12))
+        ctk.CTkButton(
+            toolbar, text="Quick action", width=130, fg_color="#2563EB"
+        ).pack(side="right")
 
-        # Search and action
-        search = ctk.CTkEntry(header, width=420, placeholder_text="Search accounts, clients, arrangements...")
-        search.pack(side="left", padx=20)
+        cards = ctk.CTkFrame(content, fg_color="transparent")
+        cards.pack(fill="x", pady=(0, 12))
+        self.summary_card(cards, "Total accounts", str(len(self.accounts))).pack(
+            side="left", fill="x", expand=True, padx=(0, 6)
+        )
+        self.summary_card(cards, "Outstanding balance", self.format_total_balance()).pack(
+            side="left", fill="x", expand=True, padx=(6, 0)
+        )
 
-        ctk.CTkButton(header, text="Quick action", fg_color="#ff7b1a", width=140).pack(side="right", padx=12)
+        table_frame = ctk.CTkFrame(content, fg_color="#172033")
+        table_frame.pack(fill="both", expand=True)
+        ctk.CTkLabel(
+            table_frame, text="Assigned accounts", anchor="w",
+            font=ctk.CTkFont(size=18, weight="bold")
+        ).pack(fill="x", padx=14, pady=(12, 8))
 
-        # Summary cards
-        cards = ctk.CTkFrame(self)
-        cards.pack(fill="x", padx=20)
-
-        self.summary_card(cards, "Total accounts", str(len(self.accounts))).pack(side="left", padx=10, pady=10)
-        self.summary_card(cards, "Outstanding balance", self.format_total_balance()).pack(side="left", padx=10, pady=10)
-
-        # Accounts table header
-        header_cols = ctk.CTkFrame(self)
-        header_cols.pack(fill="x", padx=20, pady=(10, 0))
-
-        cols = [
+        columns = (
             "Contract", "Jabulani account", "Debt", "Days overdue",
-             "Status", "Notes", "Target date", "Default date"
-        ]
-        for c in cols:
-            ctk.CTkLabel(header_cols, text=c, width=120, anchor="w", font=("Segoe UI", 12, "bold")).pack(side="left", padx=6)
+            "Status", "Notes", "Target date", "Default date"
+        )
+        style = ttk.Style(self)
+        style.theme_use("clam")
+        style.configure(
+            "Collector.Treeview", background="#172033", fieldbackground="#172033",
+            foreground="#F9FAFB", rowheight=30, borderwidth=0
+        )
+        style.configure(
+            "Collector.Treeview.Heading", background="#1F2937",
+            foreground="#F9FAFB", relief="flat", font=("Segoe UI", 10, "bold")
+        )
+        style.map("Collector.Treeview", background=[("selected", "#2563EB")])
 
-        # Scrollable rows
-        rows_frame = ctk.CTkScrollableFrame(self, height=360)
-        rows_frame.pack(fill="both", expand=False, padx=20, pady=10)
-
+        table_area = ctk.CTkFrame(table_frame, fg_color="transparent")
+        table_area.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        table_area.grid_rowconfigure(0, weight=1)
+        table_area.grid_columnconfigure(0, weight=1)
+        table = ttk.Treeview(
+            table_area, columns=columns, show="headings", height=12,
+            style="Collector.Treeview"
+        )
+        for name in columns:
+            table.heading(name, text=name)
+            table.column(name, width=140, minwidth=110, stretch=False, anchor="w")
         for acc in self.accounts:
-            row = ctk.CTkFrame(rows_frame)
-            row.pack(fill="x", pady=6)
+            table.insert("", "end", values=(
+                acc.get("contract_number", ""),
+                acc.get("jabulani_account_no", ""),
+                acc.get("calculated_debt", acc.get("principal", "")),
+                acc.get("days_overdue", ""),
+                acc.get("status", ""),
+                acc.get("notes", acc.get("Notes", "")),
+                acc.get("target_date", ""),
+                acc.get("date_of_default", ""),
+            ))
 
-            ctk.CTkLabel(row, text=acc.get("contract_number", ""), width=120, anchor="w").pack(side="left", padx=6)
-            ctk.CTkLabel(row, text=acc.get("jabulani_account_no", ""), width=120, anchor="w").pack(side="left", padx=6)
-            ctk.CTkLabel(row, text=acc.get("calculated_debt", acc.get("principal", "")), width=120, anchor="w").pack(side="left", padx=6)
-            ctk.CTkLabel(row, text=acc.get("days_overdue", ""), width=120, anchor="w").pack(side="left", padx=6)
-            ctk.CTkLabel(row, text=acc.get("Notes", ""), width=120, anchor="w").pack(side="left", padx=6)
-            ctk.CTkLabel(row, text=acc.get("status", ""), width=120, anchor="w").pack(side="left", padx=6)
-            ctk.CTkLabel(row, text=acc.get("target_date", ""), width=120, anchor="w").pack(side="left", padx=6)
-            ctk.CTkLabel(row, text=acc.get("date_of_default", ""), width=120, anchor="w").pack(side="left", padx=6)
+        table.grid(row=0, column=0, sticky="nsew")
+        yscroll = ttk.Scrollbar(table_area, orient="vertical", command=table.yview)
+        yscroll.grid(row=0, column=1, sticky="ns")
+        xscroll = ttk.Scrollbar(table_area, orient="horizontal", command=table.xview)
+        xscroll.grid(row=1, column=0, sticky="ew")
+        table.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
 
-        # Action button
-        ctk.CTkButton(self, text="Bulk action", width=140).pack(side="right", padx=20, pady=12)
+        ctk.CTkButton(content, text="Bulk action", width=140).pack(
+            anchor="e", pady=(12, 0)
+        )
 
     def summary_card(self, parent, title, value):
-        frame = ctk.CTkFrame(parent, width=220, height=80)
-        frame.pack_propagate(False)
+        frame = ctk.CTkFrame(parent, height=80, fg_color="#172033")
 
         ctk.CTkLabel(frame, text=title, font=("Segoe UI", 12)).pack(anchor="w", padx=10, pady=(8, 0))
         ctk.CTkLabel(frame, text=value, font=("Segoe UI", 18, "bold")).pack(anchor="w", padx=10)

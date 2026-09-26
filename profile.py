@@ -8,7 +8,7 @@ class Profile(ctk.CTkFrame):
 
     def __init__(self, master):
 
-        super().__init__(master)
+        super().__init__(master, fg_color="#0F172A")
 
         self.pack(fill="both", expand=True)
 
@@ -16,17 +16,17 @@ class Profile(ctk.CTkFrame):
 
     def build(self):
 
-        top = ctk.CTkFrame(self)
+        top = ctk.CTkFrame(self, fg_color="transparent")
 
         top.pack(fill="x")
 
         ctk.CTkButton(
             top,
-            text="← Dashboard",
+            text="Back to Dashboard",
             command=self.back
         ).pack(side="left", padx=20, pady=15)
 
-        body = ctk.CTkFrame(self)
+        body = ctk.CTkScrollableFrame(self, fg_color="#172033")
 
         body.pack(fill="both", expand=True, padx=20, pady=20)
 
@@ -74,12 +74,6 @@ class Profile(ctk.CTkFrame):
         app = self._find_app()
         if app:
             app.show_page(__import__('dashboard').Dashboard)
-        else:
-            try:
-                self.destroy()
-            except Exception:
-                pass
-            Dashboard(self.master)
 
     def _find_app(self):
         parent = self.master
@@ -93,4 +87,6 @@ class Profile(ctk.CTkFrame):
 
         Session.logout()
 
-        self.master.destroy()
+        app = self._find_app()
+        if app:
+            app.show_page(__import__('login').LoginPage)
